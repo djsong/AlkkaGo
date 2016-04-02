@@ -69,6 +69,8 @@ public class AKGPlayWorld {
     private ArrayList<AKGStone> mAllStones = new ArrayList<AKGStone>(); // Simply sum of mBlackStones and mWhiteStones
     private final float AlkkagiBoardSize = 60.0f;
     private final float AlkkagiStoneRadius = 3.0f;
+    /** How much initial placement deviation will be applied for AI training? */
+    public final float AITrainingModeRandomPlacement = 3.0f;
 
     private PhysicsUpdateThread mPhysicsThread = null;
 
@@ -105,7 +107,7 @@ public class AKGPlayWorld {
         mAIWinImage = BitmapFactory.decodeResource(mPlayView.getResources(), R.drawable.alkkago_is_skynet);
         mHumanWinImage = BitmapFactory.decodeResource(mPlayView.getResources(), R.drawable.i_will_be_back);
 
-        SetStonesAtStartingPosition();
+        SetStonesAtStartingPosition(0.0f); // No need random placement for the first time
 
         StartPhysicsThread();
         StartAIThread();
@@ -182,7 +184,7 @@ public class AKGPlayWorld {
     }
 
     /** Initialize stone positions for play */
-    public synchronized void SetStonesAtStartingPosition()
+    public synchronized void SetStonesAtStartingPosition(float RandomPlaceDeviation)
     {
         for(int SI = 0; SI < mBlackStones.size(); ++SI)
         {
@@ -190,6 +192,10 @@ public class AKGPlayWorld {
 
             float XCoord = mAlkkagiBoard.LeftX() + ( (mAlkkagiBoard.Width() / (float)(mBlackStones.size() + 1)) * (float)(SI + 1) );
             float YCoord = mAlkkagiBoard.UpperY() + (mAlkkagiBoard.Height() / 4.0f) * 3.0f;
+            if(RandomPlaceDeviation > 0.0f){
+                XCoord += AKGUtil.RandRangeF(-1.0f * RandomPlaceDeviation, RandomPlaceDeviation);
+                YCoord += AKGUtil.RandRangeF(-1.0f * RandomPlaceDeviation, RandomPlaceDeviation);
+            }
             CurrStone.SetIsAlive(true);
             CurrStone.ForceStop();
             CurrStone.SetPosition(XCoord, YCoord);
@@ -200,6 +206,10 @@ public class AKGPlayWorld {
 
             float XCoord = mAlkkagiBoard.LeftX() + ( (mAlkkagiBoard.Width() / (float)(mWhiteStones.size() + 1)) * (float)(SI + 1) );
             float YCoord = mAlkkagiBoard.UpperY() + (mAlkkagiBoard.Height() / 4.0f);
+            if(RandomPlaceDeviation > 0.0f){
+                XCoord += AKGUtil.RandRangeF(-1.0f * RandomPlaceDeviation, RandomPlaceDeviation);
+                YCoord += AKGUtil.RandRangeF(-1.0f * RandomPlaceDeviation, RandomPlaceDeviation);
+            }
             CurrStone.SetIsAlive(true);
             CurrStone.ForceStop();
             CurrStone.SetPosition(XCoord, YCoord);

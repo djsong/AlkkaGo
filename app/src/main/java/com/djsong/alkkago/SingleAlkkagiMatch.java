@@ -74,7 +74,8 @@ public class SingleAlkkagiMatch {
         mbMatchCompleted = false;
         mbIsAITrainingMatch = bInAITrainingMatch; // Logs will be suppressed for this.
 
-        mPlayWorld.SetStonesAtStartingPosition();
+        // Give some random placement for AI training.
+        mPlayWorld.SetStonesAtStartingPosition(mbIsAITrainingMatch ? mPlayWorld.AITrainingModeRandomPlacement : 0.0f);
 
         StartBlackTurn(); // Black is the first anyway.
     }

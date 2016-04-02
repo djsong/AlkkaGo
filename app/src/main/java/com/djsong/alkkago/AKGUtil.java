@@ -10,6 +10,12 @@ public class AKGUtil {
 
     public static final float KINDA_SMALL_NUMBER = 0.0001f;
 
+    public static float RandRangeF(float Min, float Max){
+        float TotalRange = Math.max(Max - Min, 0.0f);
+        float RandRaw = (float)Math.random(); // Supposed to be 0.0 ~ 1.0
+        return Min + RandRaw * TotalRange;
+    }
+
     /** It can be used to check if StoneA and StoneB are actually the same one in physically simulated environment. */
     public static boolean AreTwoStonesEntirelyOverlap(AKGStone StoneA, AKGStone StoneB){
         AKGVector2D PosDelta = new AKGVector2D(StoneA.WorldCoordX() - StoneB.WorldCoordX(), StoneA.WorldCoordY() - StoneB.WorldCoordY());

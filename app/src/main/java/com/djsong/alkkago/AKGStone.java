@@ -165,10 +165,10 @@ public class AKGStone extends AKGActor {
     //////////////////////////////////////////////////
     // Data and method for rendering.
 
-    private float mRenderRaius = 10.0f;
+    private float mRenderRadius = 10.0f;
 
     public void RenderThread_Draw(Canvas InDrawCanvas, Paint InDrawPaint, float WorldRenderScale){
-        mRenderRaius = WorldRenderScale * mRadius;
+        mRenderRadius = WorldRenderScale * mRadius;
         super.RenderThread_Draw(InDrawCanvas, InDrawPaint, WorldRenderScale);
     }
 
@@ -181,8 +181,8 @@ public class AKGStone extends AKGActor {
             InDrawPaint.setARGB(255, 255,255,255);
         }
         // mRenderCoordX/Y are calculated as upper left coordinate, we need center coordinate here.
-        InDrawCanvas.drawCircle(mRenderCoordX + mRenderRaius, mRenderCoordY + mRenderRaius,
-                mRenderRaius, InDrawPaint);
+        InDrawCanvas.drawCircle(mRenderCoordX + mRenderRadius, mRenderCoordY + mRenderRadius,
+                mRenderRadius, InDrawPaint);
 
         // Draw dead stone mark
         if(!IsAlive()) {
@@ -192,9 +192,9 @@ public class AKGStone extends AKGActor {
             else{
                 InDrawPaint.setARGB(255, 0,0,0);
             }
-            InDrawPaint.setTextSize(mRenderRaius * 2.0f);
-            InDrawCanvas.drawText("X", mRenderCoordX + mRenderRaius * 0.4f,
-                    mRenderCoordY + mRenderRaius * 1.6f, InDrawPaint);
+            InDrawPaint.setTextSize(mRenderRadius * 2.0f);
+            InDrawCanvas.drawText("X", mRenderCoordX + mRenderRadius * 0.4f,
+                    mRenderCoordY + mRenderRadius * 1.6f, InDrawPaint);
         }
     }
 
