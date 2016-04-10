@@ -357,8 +357,14 @@ public class AKGPlayWorld {
         // Collision detection and handling of stones.
         for(int SIA = 0; SIA < mAllStones.size(); ++SIA) {
             AKGStone StoneA = mAllStones.get(SIA);
+            if(!StoneA.IsAlive()){
+                continue;
+            }
             for(int SIB = SIA + 1; SIB < mAllStones.size(); ++SIB){
                 AKGStone StoneB = mAllStones.get(SIB);
+                if(!StoneB.IsAlive()){
+                    continue;
+                }
 
                 // First, check with line from previous frame's position to current frame's position
                 // It can check collision even when the stone moves too fast.

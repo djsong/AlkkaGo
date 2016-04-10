@@ -101,7 +101,7 @@ public class AKGUtil {
         return false;
     }
 
-    public static float GetMinFromFloatArray(float[] InArray){
+    public static float GetMeanFromFloatArray(float[] InArray){
         if(InArray.length == 0){
             return 0.0f;
         }
@@ -125,7 +125,7 @@ public class AKGUtil {
         return (float)Math.sqrt(AllDevAdded / (double)InArray.length);
     }
 
-    public static float GetMinFromWeightedFloatArray(ArrayList<AlkkagiAI.WeightedFloat> InArray) {
+    public static float GetMeanFromWeightedFloatArray(ArrayList<AlkkagiAI.WeightedFloat> InArray) {
         if(InArray.size() == 0){
             return 0.0f;
         }
@@ -161,7 +161,7 @@ public class AKGUtil {
         return (float)Math.sqrt(AddedVar);
     }
 
-    public static float GetMinWeightFromWeightedFloatArray(ArrayList<AlkkagiAI.WeightedFloat> InArray){
+    public static float GetMeanWeightFromWeightedFloatArray(ArrayList<AlkkagiAI.WeightedFloat> InArray){
         if(InArray.size() == 0){
             return 0.0f;
         }

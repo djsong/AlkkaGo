@@ -106,6 +106,47 @@ class AKGAIVarSet{
         mKickDirDeviation = new NDAIVar(0.0f, FinalStdDev, false);
     }
 
+
+    /** To be applied to the inverse of distance from kick stone candidate and target candidate */
+    private NDAIVar mTargetSelectScaleA = new NDAIVar(20.0f, 10.0f, true);
+    public float GetSampleTargetSelectScaleA(AKGAITrialRecordInfo OptionalRecordInfo){
+        float ThisSample = mTargetSelectScaleA.GetSampleValue();
+        if(OptionalRecordInfo != null){
+            OptionalRecordInfo.mTargetSelectScaleA =ThisSample;
+        }
+        return ThisSample;
+    }
+
+
+    /** To be applied to the inverse of distance from target candidate and board edge */
+    private NDAIVar mTargetSelectScaleB = new NDAIVar(10.0f, 10.0f, true);
+    public float GetSampleTargetSelectScaleB(AKGAITrialRecordInfo OptionalRecordInfo){
+        float ThisSample = mTargetSelectScaleB.GetSampleValue();
+        if(OptionalRecordInfo != null){
+            OptionalRecordInfo.mTargetSelectScaleB =ThisSample;
+        }
+        return ThisSample;
+    }
+
+    /** To be applied to the inverse of distance between two and additionally from kick candidate and board edge (To get out from my dangerous state) */
+    private NDAIVar mTargetSelectScaleC = new NDAIVar(20.0f, 10.0f, true);
+    public float GetSampleTargetSelectScaleC(AKGAITrialRecordInfo OptionalRecordInfo){
+        float ThisSample = mTargetSelectScaleC.GetSampleValue();
+        if(OptionalRecordInfo != null){
+            OptionalRecordInfo.mTargetSelectScaleC =ThisSample;
+        }
+        return ThisSample;
+    }
+
+    /** To be applied to the number of stones in the same direction */
+    private NDAIVar mTargetSelectScaleExtra = new NDAIVar(1.0f, 1.0f, false); // Probably positive..?
+    public float GetSampleTargetSelectScaleExtra(AKGAITrialRecordInfo OptionalRecordInfo){
+        float ThisSample = mTargetSelectScaleExtra.GetSampleValue();
+        if(OptionalRecordInfo != null){
+            OptionalRecordInfo.mTargetSelectScaleExtra =ThisSample;
+        }
+        return ThisSample;
+    }
 }
 
 /**
@@ -121,6 +162,11 @@ class AKGAITrialRecordInfo{
     float mKickForceScaleA = 0.0f;
     float mKickForceScaleB = 0.0f;
     float mKickDirDeviation = 0.0f;
+
+    float mTargetSelectScaleA = 0.0f;
+    float mTargetSelectScaleB = 0.0f;
+    float mTargetSelectScaleC = 0.0f;
+    float mTargetSelectScaleExtra = 0.0f;
 }
 
 /**
@@ -167,17 +213,17 @@ public class AlkkagiAI {
      * Do not forget to notify match class object, by SingleAlkkagiMatch.NotifyKickedAStone if returns valid reference. */
     public KickTargetPickInfo TryKickAStone(ArrayList<AKGStone> ControllingStones, ArrayList<AKGStone> OtherStones, ArrayList<AKGStone> AllStones){
 
-        KickTargetPickInfo PickedKickAndTarget = TryPickBestKickAndTargetStone(ControllingStones, OtherStones, AllStones);
+        // Create new one for this turn's AI var recording. Almost for mbDeepShittingMode but just do this for all time.
+        CachedLastTrialRecord = new AKGAITrialRecordInfo();
+
+        KickTargetPickInfo PickedKickAndTarget = TryPickBestKickAndTargetStone(ControllingStones, OtherStones, AllStones, CachedLastTrialRecord);
         if(PickedKickAndTarget.KickStone == null || PickedKickAndTarget.TargetStone == null){
             return null; // Not a normal expected case. Probably found no live stones..
         }
 
-        // Create new one for this turn's AI var recording. Almost for mbDeepShittingMode but just do this for all time.
-        CachedLastTrialRecord = new AKGAITrialRecordInfo();
-
         AKGVector2D KickDirection = ComputeKickDirection(PickedKickAndTarget.KickStone, PickedKickAndTarget.TargetStone, CachedLastTrialRecord);
         float KickForceSize = ComputeKickForceSize(PickedKickAndTarget.KickStone, PickedKickAndTarget.TargetStone, KickDirection, CachedLastTrialRecord);
-        //KickForceSize = Math.min(mKickForceLimit, KickForceSize);
+        //KickForceSize = Math.min(mKickForceLimit, KickForceSize); //-> Instead of limiting kicking force, limit the speed
 
 
         // Now, kick it!
@@ -218,33 +264,37 @@ public class AlkkagiAI {
     }
 
 
-    /** Just a transient struct to make a list.. */
+    /** Helper struct to choose a kick and target stone. */
     public class KickTargetPickInfo{
-        public AKGStone KickStone = null;
-        public AKGStone TargetStone = null;
+        public AKGStone KickStone = null; // One of final result
+        public AKGStone TargetStone = null; // One of final result
+
+        /** Bonus data to help choose the final target stone. Number of other stones in the same direction from KickStone to TargetStone. */
+        public int AdditionalTargetNumInSameLine = 0;
+
+        /** Cached score that to be compared to other pick info, to choose the best one. */
+        public float CachedTargetSelectScore = 0.0f;
     }
 
-    private KickTargetPickInfo TryPickBestKickAndTargetStone(ArrayList<AKGStone> ControllingStones, ArrayList<AKGStone> OtherStones, ArrayList<AKGStone> AllStones){
-        ArrayList<KickTargetPickInfo> PossiblePickInfoList = new ArrayList<KickTargetPickInfo>();
+    /** The main entry point to get AI's kicking target. */
+    private KickTargetPickInfo TryPickBestKickAndTargetStone(ArrayList<AKGStone> ControllingStones, ArrayList<AKGStone> OtherStones, ArrayList<AKGStone> AllStones, AKGAITrialRecordInfo OptionalRecordInfo){
+        ArrayList<KickTargetPickInfo> AllPossiblePickInfo = new ArrayList<KickTargetPickInfo>();
 
         for(int CI = 0; CI < ControllingStones.size(); ++CI){
 
             AKGStone CurrKickCandid = ControllingStones.get(CI);
 
             if(CurrKickCandid.IsAlive()) { // Better not forget live check..
-                AKGStone PossibleTarget = TryPickBestVisibleTargetOfSingleKickStone(CurrKickCandid, OtherStones, AllStones);
+                ArrayList<KickTargetPickInfo> PickInfoListForCurrKickCandid = TryGetVisibleTargetPickInfoListOfSingleKickStone(CurrKickCandid, ControllingStones, OtherStones);
 
-                if(PossibleTarget != null && PossibleTarget.IsAlive()){ // Double check for IsAlive
-                    // We got one possible kick and target combination.
-                    KickTargetPickInfo NewPossibleInfo = new KickTargetPickInfo();
-                    NewPossibleInfo.KickStone = CurrKickCandid;
-                    NewPossibleInfo.TargetStone = PossibleTarget;
-                    PossiblePickInfoList.add(NewPossibleInfo);
+                // Just add all to AllPossiblePickInfo for later evaluation
+                for(KickTargetPickInfo CurrInfo : PickInfoListForCurrKickCandid){
+                    AllPossiblePickInfo.add(CurrInfo);
                 }
             }
         }
 
-        if(PossiblePickInfoList.size() == 0){
+        if(AllPossiblePickInfo.size() == 0){
             // In this case, we could not find any visible target stone. All other stones are blocked by one of my stones.
             // Just try find the closest one, not care about visibility stuff, we need to do some anyhow.
 
@@ -258,70 +308,112 @@ public class AlkkagiAI {
                         KickTargetPickInfo NewPossibleInfo = new KickTargetPickInfo();
                         NewPossibleInfo.KickStone = CurrKickCandid;
                         NewPossibleInfo.TargetStone = PossibleTarget;
-                        PossiblePickInfoList.add(NewPossibleInfo);
+                        AllPossiblePickInfo.add(NewPossibleInfo);
                     }
                 }
             }
         }
 
-        // If PossiblePickInfoList is still 0 yet, the game must be over..
+        // If AllPossiblePickInfo is still empty yet, the game must be over..
+
+        return FinalChooseMostReasonableTargetInfo(AllPossiblePickInfo, OptionalRecordInfo);
+    }
+
+    /** Finally choose the best KickTargetPickInfo from previously acquired possible list.
+     * This is where AI do some regarding target choosing. */
+    private KickTargetPickInfo FinalChooseMostReasonableTargetInfo(ArrayList<KickTargetPickInfo> InPossibleList, AKGAITrialRecordInfo OptionalRecordInfo){
 
         KickTargetPickInfo RetInfo = new KickTargetPickInfo();
-        // Now, just pick up the closest combination among PossiblePickInfoList
-        float ClosestDist = 1000000000000.0f;
-        for(int PPI = 0; PPI < PossiblePickInfoList.size(); ++PPI) {
-            KickTargetPickInfo CurrInfo = PossiblePickInfoList.get(PPI);
-            float CurrDist = AKGUtil.DistBetweenTwoStones(CurrInfo.KickStone, CurrInfo.TargetStone);
-            if(CurrDist < ClosestDist){
+
+        float BestScore = -1000000000000.0f; // Start from negative..
+        for(int PPI = 0; PPI < InPossibleList.size(); ++PPI) {
+            KickTargetPickInfo CurrInfo = InPossibleList.get(PPI);
+
+            // Evaluate some variables to choose the best target.
+
+            float DistBetweenTwo = AKGUtil.DistBetweenTwoStones(CurrInfo.KickStone, CurrInfo.TargetStone);
+
+            AKGVector2D KickDirection = new AKGVector2D(CurrInfo.TargetStone.WorldCoordX() - CurrInfo.KickStone.WorldCoordX(), CurrInfo.TargetStone.WorldCoordY() - CurrInfo.KickStone.WorldCoordY());
+            KickDirection.NormalizeSelf();
+            float DistFromTargetToEdge = mAlkkagiBoard.GetMinDistToEdgeInDirection(CurrInfo.TargetStone.WorldCoord(), KickDirection);
+
+            KickDirection.multiply(-1.0f); // In the opposite way. Possible direction of target stone kick to me at next turn
+            float DistFromKickToEdge = mAlkkagiBoard.GetMinDistToEdgeInDirection(CurrInfo.KickStone.WorldCoord(), KickDirection);
+
+            // Apply scales to get the final score..
+            CurrInfo.CachedTargetSelectScore = GetThisTurnVarSet().GetSampleTargetSelectScaleA(OptionalRecordInfo) * (1.0f / DistBetweenTwo) + // Take inverse to consider less one higher.
+                    GetThisTurnVarSet().GetSampleTargetSelectScaleB(OptionalRecordInfo) * (1.0f / DistFromTargetToEdge) +
+                    GetThisTurnVarSet().GetSampleTargetSelectScaleC(OptionalRecordInfo) * (1.0f / (DistFromKickToEdge + DistBetweenTwo)) + // See how kick stone can be in danger at next turn.
+                    // AdditionalTargetNumInSameLine is integer and can get easily bigger than other inversed value, consider that to set proper SampleTargetSelectScaleExtra.
+                    GetThisTurnVarSet().GetSampleTargetSelectScaleExtra(OptionalRecordInfo) * (float)CurrInfo.AdditionalTargetNumInSameLine;
+
+            if(CurrInfo.CachedTargetSelectScore > BestScore) {
                 RetInfo = CurrInfo;
-                ClosestDist = CurrDist;
+                BestScore = CurrInfo.CachedTargetSelectScore;
             }
         }
 
         return RetInfo;
     }
 
-    /** Pick visible one (not blocked by any other stones) from OtherStones list, to be the best target of KickStone.
-     * It will return null if there's nothing visible and alive */
-    private AKGStone TryPickBestVisibleTargetOfSingleKickStone(AKGStone KickStone, ArrayList<AKGStone> OtherStones, ArrayList<AKGStone> AllStones){
+    /** Pick visible ones (not blocked by any other stones) from OtherStones list, to be the possible targets of KickStone.
+     * It will return empty list if there's nothing visible and alive */
+    private ArrayList<KickTargetPickInfo> TryGetVisibleTargetPickInfoListOfSingleKickStone(AKGStone KickStone, ArrayList<AKGStone> ControllingStones, ArrayList<AKGStone> OtherStones){
 
-        ArrayList<AKGStone> VisibleList = new ArrayList<AKGStone>();
+        ArrayList<KickTargetPickInfo> VisibleList = new ArrayList<KickTargetPickInfo>();
 
         for (int SI = 0; SI < OtherStones.size(); ++SI) {
-            AKGStone CurrCandidate = OtherStones.get(SI);
+            AKGStone TargetCandidate = OtherStones.get(SI);
 
-            if(!CurrCandidate.IsAlive()){ // Don't care about dead one.
+            if(!TargetCandidate.IsAlive()){ // Don't care about dead one.
                 continue;
             }
 
             AKGVector2D RayCheckOrigin = new AKGVector2D(KickStone.WorldCoord());
-            AKGVector2D RayCheckDir = new AKGVector2D(CurrCandidate.WorldCoordX() - KickStone.WorldCoordX(), CurrCandidate.WorldCoordY() - KickStone.WorldCoordY());
+            AKGVector2D RayCheckDir = new AKGVector2D(TargetCandidate.WorldCoordX() - KickStone.WorldCoordX(), TargetCandidate.WorldCoordY() - KickStone.WorldCoordY());
             RayCheckDir.NormalizeSelf();
 
-            // Check visibility
-            boolean bBlockedBySomething = false;
-            for(int ASI = 0; ASI < AllStones.size(); ++ASI){ // We may check for my (controlling) stones list.. It should return the same result..?
-                AKGStone CheckStone = AllStones.get(ASI);
+            // Check visibility if kicking to current candidate can set one of my (controlling) stones in danger.
+            boolean bBlockedByOneOfMine = false;
+            for(int CSI = 0; CSI < ControllingStones.size(); ++CSI){
+                AKGStone CheckStone = ControllingStones.get(CSI);
 
-                // Skip for our kick stone and target candidate.
-                if( AKGUtil.AreTwoStonesEntirelyOverlap(KickStone, CheckStone) || AKGUtil.AreTwoStonesEntirelyOverlap(CurrCandidate, CheckStone) ){
+                // Skip for our kick stone
+                if( AKGUtil.AreTwoStonesEntirelyOverlap(KickStone, CheckStone) ){
                     continue;
                 }
 
                 if(AKGUtil.RayCircleIntersect(RayCheckOrigin, RayCheckDir, CheckStone.WorldCoord(), CheckStone.Radius())){
-                    bBlockedBySomething = true; // CheckStone blocks the way between KickStone and current target candidate.
+                    bBlockedByOneOfMine = true; // CheckStone blocks the way between KickStone and current target candidate.
                     break;
                 }
             }
 
-            if(!bBlockedBySomething) {
+            // How many other stones are in the same direction to the target candidate?
+            // In this case, the stones in the same line can be considered as a good chance to get multiple in a single kick or can be either considered as obstacle.
+            int OtherStonesNumInSameLine = 0;
+            for (int OSI = 0; OSI < OtherStones.size(); ++OSI) {
+                if(OSI == SI){
+                    continue; // Skip for the same one.
+                }
+                AKGStone OtherStoneCheck = OtherStones.get(OSI);
+                if(AKGUtil.RayCircleIntersect(RayCheckOrigin, RayCheckDir, OtherStoneCheck.WorldCoord(), OtherStoneCheck.Radius())){
+                    ++OtherStonesNumInSameLine;
+                }
+            }
+
+            if(!bBlockedByOneOfMine) {
                 // Now we can put this in visible list
-                VisibleList.add(CurrCandidate);
+                KickTargetPickInfo NewVisibleInfo = new KickTargetPickInfo();
+                NewVisibleInfo.KickStone = KickStone;
+                NewVisibleInfo.TargetStone = TargetCandidate;
+                NewVisibleInfo.AdditionalTargetNumInSameLine = OtherStonesNumInSameLine; // It will do some for choosing the final target among visible list.
+                VisibleList.add(NewVisibleInfo);
             }
         }
 
-        // It can be still null if found no visible live target.
-        return TryPickClosestTargetOfSingleKickStone(KickStone, VisibleList);
+        // It can be still empty if found no visible live target.
+        return VisibleList;//TryPickClosestTargetOfSingleKickStone(KickStone, VisibleList);
     }
 
     /**
@@ -418,15 +510,15 @@ public class AlkkagiAI {
             KickDirDeviationList.add(new WeightedFloat(ThisInfo.mWeight, ThisInfo.mKickDirDeviation));
         }
 
-        float MinWeight = AKGUtil.GetMinWeightFromWeightedFloatArray(KickForceScaleAList); // MinWeight will be the AIVar final update weight.
+        float MinWeight = AKGUtil.GetMeanWeightFromWeightedFloatArray(KickForceScaleAList); // MinWeight will be the AIVar final update weight.
 
-        float ScaleAMin = AKGUtil.GetMinFromWeightedFloatArray(KickForceScaleAList);
+        float ScaleAMin = AKGUtil.GetMeanFromWeightedFloatArray(KickForceScaleAList);
         float ScaleAStdDev = AKGUtil.GetStdDevFromWeightedFloatArray(KickForceScaleAList, ScaleAMin);
 
-        float ScaleBMin = AKGUtil.GetMinFromWeightedFloatArray(KickForceScaleBList);
+        float ScaleBMin = AKGUtil.GetMeanFromWeightedFloatArray(KickForceScaleBList);
         float ScaleBStdDev = AKGUtil.GetStdDevFromWeightedFloatArray(KickForceScaleBList, ScaleBMin);
 
-        float DirDevMin = AKGUtil.GetMinFromWeightedFloatArray(KickDirDeviationList);
+        float DirDevMin = AKGUtil.GetMeanFromWeightedFloatArray(KickDirDeviationList);
         //float DirDevStdDev = AKGUtil.GetStdDevFromWeightedFloatArray(KickDirDeviationList, DirDevMin);
 
         // @TODO We might apply some weight on update AIVarSet.
