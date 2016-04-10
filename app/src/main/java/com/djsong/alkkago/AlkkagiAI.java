@@ -12,17 +12,17 @@ class NDAIVar{
 
     Random mRandObj = new Random();
 
-    private float mMinValue = 0.0f;
-    public float MinValue() {return mMinValue;}
+    private float mMeanValue = 0.0f;
+    public float MeanValue() {return mMeanValue;}
 
     private float mStdDev = 1.0f; // Standard deviation
     public float StdDev() {return mStdDev;}
 
-    private boolean mbPositiveDistributeOnly = false; // You can still get negative value by adjusting mMinValue.
+    private boolean mbPositiveDistributeOnly = false; // You can still get negative value by adjusting mMeanValue.
     public boolean IsOnlyPositiveDistribution() {return mbPositiveDistributeOnly;}
 
-    public NDAIVar(float InMinValue, float InStdDev, boolean bInPositiveDistributeOnly){
-        mMinValue = InMinValue;
+    public NDAIVar(float InMeanValue, float InStdDev, boolean bInPositiveDistributeOnly){
+        mMeanValue = InMeanValue;
         mStdDev = InStdDev;
         mbPositiveDistributeOnly = bInPositiveDistributeOnly;
     }
@@ -33,7 +33,7 @@ class NDAIVar{
     public float GetSampleValue(){
         // Normal distribution.
         float OriginalDistribution = (float)mRandObj.nextGaussian();
-        float ScaledResult = mMinValue + (mbPositiveDistributeOnly ? Math.abs(OriginalDistribution) : OriginalDistribution) * mStdDev;
+        float ScaledResult = mMeanValue + (mbPositiveDistributeOnly ? Math.abs(OriginalDistribution) : OriginalDistribution) * mStdDev;
         return ScaledResult;
     }
 
@@ -43,72 +43,74 @@ class NDAIVar{
 /** All necessary AI variables struct */
 class AKGAIVarSet{
 
+    //////////////////////////////////////////////////
     /** KickForceScaleA will be applied to the distance between kicking stone and target stone */
     private NDAIVar mKickForceScaleA = new NDAIVar(1.0f, 3.5f, true); // Initial values.. to be somewhat dumb.
     public float GetSampleKickForceScaleA(AKGAITrialRecordInfo OptionalRecordInfo){
         float ThisSample = mKickForceScaleA.GetSampleValue();
-
         if(OptionalRecordInfo != null){
             OptionalRecordInfo.mKickForceScaleA = ThisSample;
         }
-
         return ThisSample;
     }
     /** Update KickForceScaleA with new value's weight (0 ~ 1) to existing value */
-    public void UpdateKickForceScaleA(float NewMin, float NewStdDev, float NewValueWeight){
-        float FinalMin = mKickForceScaleA.MinValue() * (1.0f - NewValueWeight) + NewMin * NewValueWeight;
+    public void UpdateKickForceScaleA(float NewMean, float NewStdDev, float NewValueWeight){
+        NewValueWeight = Math.min(1.0f, Math.max(0.0f, NewValueWeight));
+        float FinalMean = mKickForceScaleA.MeanValue() * (1.0f - NewValueWeight) + NewMean * NewValueWeight;
         float FinalStdDev = mKickForceScaleA.StdDev() * (1.0f - NewValueWeight) + NewStdDev * NewValueWeight;
-        mKickForceScaleA = new NDAIVar(FinalMin, FinalStdDev, true);
+        mKickForceScaleA = new NDAIVar(FinalMean, FinalStdDev, mKickForceScaleA.IsOnlyPositiveDistribution());
     }
 
+    //////////////////////////////////////////////////
     /** KickForceScaleA will be applied to the distance between target stone and its closest edge */
     private NDAIVar mKickForceScaleB = new NDAIVar(1.0f, 3.5f, true);
     public float GetSampleKickForceScaleB(AKGAITrialRecordInfo OptionalRecordInfo){
         float ThisSample = mKickForceScaleB.GetSampleValue();
-
         if(OptionalRecordInfo != null){
             OptionalRecordInfo.mKickForceScaleB = ThisSample;
         }
-
         return ThisSample;
     }
     /** Update KickForceScaleB with new value's weight (0 ~ 1) to existing value */
-    public void UpdateKickForceScaleB(float NewMin, float NewStdDev, float NewValueWeight){
-        float FinalMin = mKickForceScaleB.MinValue() * (1.0f - NewValueWeight) + NewMin * NewValueWeight;
+    public void UpdateKickForceScaleB(float NewMean, float NewStdDev, float NewValueWeight){
+        NewValueWeight = Math.min(1.0f, Math.max(0.0f, NewValueWeight));
+        float FinalMean = mKickForceScaleB.MeanValue() * (1.0f - NewValueWeight) + NewMean * NewValueWeight;
         float FinalStdDev = mKickForceScaleB.StdDev() * (1.0f - NewValueWeight) + NewStdDev * NewValueWeight;
-        mKickForceScaleB = new NDAIVar(FinalMin, FinalStdDev, true);
+        mKickForceScaleB = new NDAIVar(FinalMean, FinalStdDev, mKickForceScaleB.IsOnlyPositiveDistribution());
     }
 
     //
     // @TODO It would be interesting to add some scale to remaining stone count of both sides.
     // Still it is just simple kicking AI, not like playing game in overall.
     //
+    // @TODO Also think about simplify repeated code blocks.
+    //
 
+    //////////////////////////////////////////////////
     /**
      * How much the AI can be out of exact target direction (in radian unit).
      * This is actually what AI can be good at. Just simulating human's behavior.
-     * The sampled value will be directly applied to exact target direction, so set the MinValue to zeor, and use StdDev only.
+     * The sampled value will be directly applied to exact target direction, so set the MeanValue to zeor, and use StdDev only.
      * */
     private NDAIVar mKickDirDeviation = new NDAIVar(0.0f, 0.6f, false);
     public float GetSampleKickDirDeviation(AKGAITrialRecordInfo OptionalRecordInfo){
         float ThisSample = mKickDirDeviation.GetSampleValue();
-
         if(OptionalRecordInfo != null){
             OptionalRecordInfo.mKickDirDeviation = ThisSample;
         }
-
         return ThisSample;
     }
     /** Update KickDirDeviation with new value's weight (0 ~ 1) to existing value */
     public void UpdateKickDirDeviation(float NewStdDev, float NewValueWeight){
+        NewValueWeight = Math.min(1.0f, Math.max(0.0f, NewValueWeight));
         // Only requires standard deviation.
         float FinalStdDev = mKickDirDeviation.StdDev() * (1.0f - NewValueWeight) + NewStdDev * NewValueWeight;
-        mKickDirDeviation = new NDAIVar(0.0f, FinalStdDev, false);
+        mKickDirDeviation = new NDAIVar(0.0f, FinalStdDev, mKickDirDeviation.IsOnlyPositiveDistribution());
     }
 
-
+    //////////////////////////////////////////////////
     /** To be applied to the inverse of distance from kick stone candidate and target candidate */
-    private NDAIVar mTargetSelectScaleA = new NDAIVar(20.0f, 10.0f, true);
+    private NDAIVar mTargetSelectScaleA = new NDAIVar(1.0f, 5.0f, false); // Better be positive. Initial value is dumb.
     public float GetSampleTargetSelectScaleA(AKGAITrialRecordInfo OptionalRecordInfo){
         float ThisSample = mTargetSelectScaleA.GetSampleValue();
         if(OptionalRecordInfo != null){
@@ -116,10 +118,16 @@ class AKGAIVarSet{
         }
         return ThisSample;
     }
+    public void UpdateTargetSelectScaleA(float NewMean, float NewStdDev, float NewValueWeight){
+        NewValueWeight = Math.min(1.0f, Math.max(0.0f, NewValueWeight));
+        float FinalMean = mTargetSelectScaleA.MeanValue() * (1.0f - NewValueWeight) + NewMean * NewValueWeight;
+        float FinalStdDev = mTargetSelectScaleA.StdDev() * (1.0f - NewValueWeight) + NewStdDev * NewValueWeight;
+        mTargetSelectScaleA = new NDAIVar(FinalMean, FinalStdDev, mTargetSelectScaleA.IsOnlyPositiveDistribution());
+    }
 
-
+    //////////////////////////////////////////////////
     /** To be applied to the inverse of distance from target candidate and board edge */
-    private NDAIVar mTargetSelectScaleB = new NDAIVar(10.0f, 10.0f, true);
+    private NDAIVar mTargetSelectScaleB = new NDAIVar(1.0f, 5.0f, false); // Better be positive. Initial value is dumb.
     public float GetSampleTargetSelectScaleB(AKGAITrialRecordInfo OptionalRecordInfo){
         float ThisSample = mTargetSelectScaleB.GetSampleValue();
         if(OptionalRecordInfo != null){
@@ -127,9 +135,17 @@ class AKGAIVarSet{
         }
         return ThisSample;
     }
+    public void UpdateTargetSelectScaleB(float NewMean, float NewStdDev, float NewValueWeight){
+        NewValueWeight = Math.min(1.0f, Math.max(0.0f, NewValueWeight));
+        float FinalMean = mTargetSelectScaleB.MeanValue() * (1.0f - NewValueWeight) + NewMean * NewValueWeight;
+        float FinalStdDev = mTargetSelectScaleB.StdDev() * (1.0f - NewValueWeight) + NewStdDev * NewValueWeight;
+        mTargetSelectScaleB = new NDAIVar(FinalMean, FinalStdDev, mTargetSelectScaleB.IsOnlyPositiveDistribution());
+    }
 
-    /** To be applied to the inverse of distance between two and additionally from kick candidate and board edge (To get out from my dangerous state) */
-    private NDAIVar mTargetSelectScaleC = new NDAIVar(20.0f, 10.0f, true);
+    //////////////////////////////////////////////////
+    /** To be applied to the inverse of distance between two and additionally from kicking candidate to board edge
+     * It is about getting out from my dangerous state. */
+    private NDAIVar mTargetSelectScaleC = new NDAIVar(1.0f, 5.0f, false); // Better be positive. Initial value is dumb.
     public float GetSampleTargetSelectScaleC(AKGAITrialRecordInfo OptionalRecordInfo){
         float ThisSample = mTargetSelectScaleC.GetSampleValue();
         if(OptionalRecordInfo != null){
@@ -137,9 +153,16 @@ class AKGAIVarSet{
         }
         return ThisSample;
     }
+    public void UpdateTargetSelectScaleC(float NewMean, float NewStdDev, float NewValueWeight){
+        NewValueWeight = Math.min(1.0f, Math.max(0.0f, NewValueWeight));
+        float FinalMean = mTargetSelectScaleC.MeanValue() * (1.0f - NewValueWeight) + NewMean * NewValueWeight;
+        float FinalStdDev = mTargetSelectScaleC.StdDev() * (1.0f - NewValueWeight) + NewStdDev * NewValueWeight;
+        mTargetSelectScaleC = new NDAIVar(FinalMean, FinalStdDev, mTargetSelectScaleC.IsOnlyPositiveDistribution());
+    }
 
-    /** To be applied to the number of stones in the same direction */
-    private NDAIVar mTargetSelectScaleExtra = new NDAIVar(1.0f, 1.0f, false); // Probably positive..?
+    //////////////////////////////////////////////////
+    /** To be applied to the number of (other side) stones in the same direction to the target */
+    private NDAIVar mTargetSelectScaleExtra = new NDAIVar(0.0f, 1.0f, false); // Probably positive..?
     public float GetSampleTargetSelectScaleExtra(AKGAITrialRecordInfo OptionalRecordInfo){
         float ThisSample = mTargetSelectScaleExtra.GetSampleValue();
         if(OptionalRecordInfo != null){
@@ -147,6 +170,13 @@ class AKGAIVarSet{
         }
         return ThisSample;
     }
+    public void UpdateTargetSelectScaleExtra(float NewMean, float NewStdDev, float NewValueWeight){
+        NewValueWeight = Math.min(1.0f, Math.max(0.0f, NewValueWeight));
+        float FinalMean = mTargetSelectScaleExtra.MeanValue() * (1.0f - NewValueWeight) + NewMean * NewValueWeight;
+        float FinalStdDev = mTargetSelectScaleExtra.StdDev() * (1.0f - NewValueWeight) + NewStdDev * NewValueWeight;
+        mTargetSelectScaleExtra = new NDAIVar(FinalMean, FinalStdDev, mTargetSelectScaleExtra.IsOnlyPositiveDistribution());
+    }
+
 }
 
 /**
@@ -156,17 +186,29 @@ class AKGAITrialRecordInfo{
     public AKGAITrialRecordInfo(){
     }
 
-    float mWeight = 0.0f; // 0.0 ~ 1.0 Bigger weight will be counted more.
+    float mWeightForKickVars = 0.0f; // 0.0 ~ 1.0 Bigger weight will be counted more.
 
     /** They reflects AKGAIVarSet */
     float mKickForceScaleA = 0.0f;
     float mKickForceScaleB = 0.0f;
     float mKickDirDeviation = 0.0f;
 
+
+    //////////////////////////////////////////////////
+    // We can separate this class from below.. They are actually treated separately.
+
+    float mWeightForTargetSelVars = 0.0f; // 0.0 ~ 1.0 Bigger weight will be counted more.
+
     float mTargetSelectScaleA = 0.0f;
     float mTargetSelectScaleB = 0.0f;
     float mTargetSelectScaleC = 0.0f;
     float mTargetSelectScaleExtra = 0.0f;
+
+    // Now, it doesn't look so clean, but we put some game state when this trial was recorded, to compare those later..
+    int mLiveMyStoneNum = 0;
+    int mLiveOtherStoneNum = 0;
+
+    boolean bIsForBlackStone = true; // Just for some check or debugging.. White if false.
 }
 
 /**
@@ -205,7 +247,11 @@ public class AlkkagiAI {
     }
 
     private KickTargetPickInfo CachedLastKickTarget = null; // Cached for single turn
-    private AKGAITrialRecordInfo CachedLastTrialRecord = null;
+
+    private AKGAITrialRecordInfo CachedTrialRecord_1 = null; // Cached AI sample variables of the most recent trial, regardless of stone type.
+
+    private AKGAITrialRecordInfo CachedTrialRecord_2_B = null; // Cached AI sample variables of black stone's previous trial
+    private AKGAITrialRecordInfo CachedTrialRecord_2_W = null; // Cached AI sample variables of white stone's previous trial
 
     /** The main job that AI will do.
      * AllStones is just the sum of ControllingStones and OtherStones.
@@ -214,15 +260,32 @@ public class AlkkagiAI {
     public KickTargetPickInfo TryKickAStone(ArrayList<AKGStone> ControllingStones, ArrayList<AKGStone> OtherStones, ArrayList<AKGStone> AllStones){
 
         // Create new one for this turn's AI var recording. Almost for mbDeepShittingMode but just do this for all time.
-        CachedLastTrialRecord = new AKGAITrialRecordInfo();
+        CachedTrialRecord_1 = new AKGAITrialRecordInfo();
 
-        KickTargetPickInfo PickedKickAndTarget = TryPickBestKickAndTargetStone(ControllingStones, OtherStones, AllStones, CachedLastTrialRecord);
+        // Before do the main stuff.. record some current state..
+        CachedTrialRecord_1.mLiveMyStoneNum = 0;
+        for(AKGStone CurrMy : ControllingStones){
+            if(CurrMy.IsAlive()){
+                ++CachedTrialRecord_1.mLiveMyStoneNum;
+            }
+            CachedTrialRecord_1.bIsForBlackStone = CurrMy.IsBlackStone(); // Not much here. Just wanna to check some stuff.. Could be just for debugging.
+        }
+        CachedTrialRecord_1.mLiveOtherStoneNum = 0;
+        for(AKGStone CurrOther : OtherStones){
+            if(CurrOther.IsAlive()){
+                ++CachedTrialRecord_1.mLiveOtherStoneNum;
+            }
+        }
+
+        // First job, select one kicking stone from my list and target stone from other list.
+        KickTargetPickInfo PickedKickAndTarget = TryPickBestKickAndTargetStone(ControllingStones, OtherStones, AllStones, CachedTrialRecord_1);
         if(PickedKickAndTarget.KickStone == null || PickedKickAndTarget.TargetStone == null){
             return null; // Not a normal expected case. Probably found no live stones..
         }
 
-        AKGVector2D KickDirection = ComputeKickDirection(PickedKickAndTarget.KickStone, PickedKickAndTarget.TargetStone, CachedLastTrialRecord);
-        float KickForceSize = ComputeKickForceSize(PickedKickAndTarget.KickStone, PickedKickAndTarget.TargetStone, KickDirection, CachedLastTrialRecord);
+        // Then, about how to kick it.
+        AKGVector2D KickDirection = ComputeKickDirection(PickedKickAndTarget.KickStone, PickedKickAndTarget.TargetStone, CachedTrialRecord_1);
+        float KickForceSize = ComputeKickForceSize(PickedKickAndTarget.KickStone, PickedKickAndTarget.TargetStone, KickDirection, CachedTrialRecord_1);
         //KickForceSize = Math.min(mKickForceLimit, KickForceSize); //-> Instead of limiting kicking force, limit the speed
 
 
@@ -272,7 +335,8 @@ public class AlkkagiAI {
         /** Bonus data to help choose the final target stone. Number of other stones in the same direction from KickStone to TargetStone. */
         public int AdditionalTargetNumInSameLine = 0;
 
-        /** Cached score that to be compared to other pick info, to choose the best one. */
+        /** Cached score that to be compared to other pick info, to choose the best one.
+         * Just put this here, expecting to be referred later..? */
         public float CachedTargetSelectScore = 0.0f;
     }
 
@@ -444,23 +508,6 @@ public class AlkkagiAI {
 
     //////////////////////////////////////////////////
 
-    /** Notified from AlkkagiMatch and playworld class at the end of turn, right before starting new turn */
-    public void NotifyTurnEnd(SingleAlkkagiTurn JustEndedTurn) {
-        // Record successful AI trial
-        if(JustEndedTurn.GetPlayerType() == SingleAlkkagiMatch.ALKKAGI_PLAYER_AI && mbDeepShittingMode) {
-            if(JustEndedTurn.GetThisTurnSuccessRate() >= SingleAlkkagiTurn.TurnResultRate_BothAlive) { // Let's count BothAlive case too, but with lower weight.
-                // Check if notified turn was what we last kicked and targeted.
-                if(JustEndedTurn.GetCachedKickedStone() == CachedLastKickTarget.KickStone && JustEndedTurn.GetCachedTargetStone() == CachedLastKickTarget.TargetStone) {
-                    if(CachedLastTrialRecord != null) { // Then we will trust this record.
-                        CachedLastTrialRecord.mWeight = JustEndedTurn.GetThisTurnSuccessRate();
-                        SuccessfulTrials.add(CachedLastTrialRecord);
-                        CachedLastTrialRecord = null;
-                    }
-                }
-            }
-        }
-    }
-
     /** Deep shitting AI training */
     private boolean mbDeepShittingMode = false;
 
@@ -470,10 +517,16 @@ public class AlkkagiAI {
     /** At least more than this number of samples gets counted to improve the AI var set. */
     private final int MinAIVarApplySampleNum = 50;
 
-    /** Successfully kicked samples will be recorded here until next AI update. */
-    private ArrayList<AKGAITrialRecordInfo> SuccessfulTrials = new ArrayList<AKGAITrialRecordInfo>();
+    /** AI var samples for one-time successful kicks will be recorded here until next AI update. */
+    private ArrayList<AKGAITrialRecordInfo> SingleKickSuccessfulTrials = new ArrayList<AKGAITrialRecordInfo>();
+    /** Another AI var samples, which count for some duration (probably just two turn though?) to see if previous selection was good. */
+    private ArrayList<AKGAITrialRecordInfo> TimedSuccessfulTrials = new ArrayList<AKGAITrialRecordInfo>();
 
-    public void StartDeepShittingTrainig(){
+    // To calculate the weight for trial record. See also SingleAlkkagiTurn.TurnResultRate**
+    static final float TimedRecordWeight_EqualResult = 0.1f; // Applied when the result after 2 turns are same for both side.
+    static final float TimedRecordWeightScale = 0.5f; // Applied to the difference of dead stones of each side after 2 turns.
+
+    public void StartDeepShittingTraining(){
         mbDeepShittingMode = true;
 
         // and.. if any
@@ -481,15 +534,69 @@ public class AlkkagiAI {
     /** Typically be called on single match end. */
     public void SingleDeepShittingSessionEnd(){
         // Refine AIVar set based on last result.. but after we get enough samples.
-        if(SuccessfulTrials.size() >= MinAIVarApplySampleNum) {
-            ApplySuccessfulSamplesToAIVar();
+        if(SingleKickSuccessfulTrials.size() >= MinAIVarApplySampleNum) {
+            ApplySingleKickSuccessfulSamplesToAIVar();
+        }
+        if(TimedSuccessfulTrials.size() >= MinAIVarApplySampleNum){
+            ApplyTimedSuccessfulSamplesToAIVar();
         }
     }
-    public void EndDeepShittingTrainig(){
-
+    public void EndDeepShittingTraining(){
         mbDeepShittingMode = false;
 
         // and.. if any
+    }
+
+    /** Notified from AlkkagiMatch and playworld class at the end of turn, right before starting new turn */
+    public void NotifyTurnEnd(SingleAlkkagiTurn JustEndedTurn) {
+        // Record successful AI trial
+        if(JustEndedTurn.GetPlayerType() == SingleAlkkagiMatch.ALKKAGI_PLAYER_AI && mbDeepShittingMode) {
+
+            // Record for single kick success.
+            if(JustEndedTurn.GetThisTurnSuccessRate() >= SingleAlkkagiTurn.TurnResultRate_BothAlive) { // Let's count BothAlive case too, but with lower weight.
+                // Check if notified turn was what we last kicked and targeted.
+                if(JustEndedTurn.GetCachedKickedStone() == CachedLastKickTarget.KickStone && JustEndedTurn.GetCachedTargetStone() == CachedLastKickTarget.TargetStone) {
+                    if(CachedTrialRecord_1 != null) { // Then we will trust this record.
+                        CachedTrialRecord_1.mWeightForKickVars = JustEndedTurn.GetThisTurnSuccessRate();
+                        SingleKickSuccessfulTrials.add(CachedTrialRecord_1);
+                    }
+                }
+            }
+
+            int CurrentLiveBlackStoneNum = mPlayWorld.GetAliveBlackStoneNum();
+            int CurrentLiveWhiteStoneNum = mPlayWorld.GetAliveWhiteStoneNum();
+            int MyStoneNumDelta = 0; // How many of my stones are dead from two turns before.
+            int OtherStoneNumDelta = 0; // How many of other stones are dead from two turns before.
+            AKGAITrialRecordInfo PrevRecordToCheck = null;
+            // Then, record for target selection and two turn history.
+            if(JustEndedTurn.IsBlackTurn() && CachedTrialRecord_2_B != null) {
+                PrevRecordToCheck = CachedTrialRecord_2_B;
+                // Check how many stones are dead for each side.
+                MyStoneNumDelta = CurrentLiveBlackStoneNum - PrevRecordToCheck.mLiveMyStoneNum;
+                OtherStoneNumDelta = CurrentLiveWhiteStoneNum - PrevRecordToCheck.mLiveOtherStoneNum;
+            } else if(!JustEndedTurn.IsBlackTurn() && CachedTrialRecord_2_W != null){
+                PrevRecordToCheck = CachedTrialRecord_2_W;
+                // Check how many stones are dead for each side.
+                OtherStoneNumDelta = CurrentLiveBlackStoneNum - PrevRecordToCheck.mLiveOtherStoneNum;
+                MyStoneNumDelta = CurrentLiveWhiteStoneNum - PrevRecordToCheck.mLiveMyStoneNum;
+            }
+            // Definitely, it is better to kill other stones more than my stones.
+            if(PrevRecordToCheck != null && MyStoneNumDelta > OtherStoneNumDelta){ // Let's not count for equal case..
+                PrevRecordToCheck.mWeightForTargetSelVars = //(MyStoneNumDelta == OtherStoneNumDelta) ? TimedRecordWeight_EqualResult :
+                        (float)(MyStoneNumDelta - OtherStoneNumDelta) * TimedRecordWeightScale; // More weight if killed other stone more.
+
+                TimedSuccessfulTrials.add(PrevRecordToCheck);
+            }
+
+            // Before null out the CachedTrialRecord, save it for one more turn. We will see how target selection affects next turn.
+            if(JustEndedTurn.IsBlackTurn()){
+                CachedTrialRecord_2_B = CachedTrialRecord_1;
+            } else{
+                CachedTrialRecord_2_W = CachedTrialRecord_1;
+            }
+
+            CachedTrialRecord_1 = null;
+        }
     }
 
     public class WeightedFloat{
@@ -498,34 +605,70 @@ public class AlkkagiAI {
         public float Value = 0.0f;
     }
 
-    private void ApplySuccessfulSamplesToAIVar(){
+    private void ApplySingleKickSuccessfulSamplesToAIVar(){
         // Make each element's list
         ArrayList<WeightedFloat> KickForceScaleAList = new ArrayList<WeightedFloat>();
         ArrayList<WeightedFloat> KickForceScaleBList = new ArrayList<WeightedFloat>();
         ArrayList<WeightedFloat> KickDirDeviationList = new ArrayList<WeightedFloat>();
-        for(int SI = 0; SI < SuccessfulTrials.size(); ++SI){
-            AKGAITrialRecordInfo ThisInfo = SuccessfulTrials.get(SI);
-            KickForceScaleAList.add(new WeightedFloat(ThisInfo.mWeight, ThisInfo.mKickForceScaleA));
-            KickForceScaleBList.add(new WeightedFloat(ThisInfo.mWeight, ThisInfo.mKickForceScaleB));
-            KickDirDeviationList.add(new WeightedFloat(ThisInfo.mWeight, ThisInfo.mKickDirDeviation));
+        for(int SI = 0; SI < SingleKickSuccessfulTrials.size(); ++SI){
+            AKGAITrialRecordInfo ThisInfo = SingleKickSuccessfulTrials.get(SI);
+            KickForceScaleAList.add(new WeightedFloat(ThisInfo.mWeightForKickVars, ThisInfo.mKickForceScaleA));
+            KickForceScaleBList.add(new WeightedFloat(ThisInfo.mWeightForKickVars, ThisInfo.mKickForceScaleB));
+            KickDirDeviationList.add(new WeightedFloat(ThisInfo.mWeightForKickVars, ThisInfo.mKickDirDeviation));
         }
 
-        float MinWeight = AKGUtil.GetMeanWeightFromWeightedFloatArray(KickForceScaleAList); // MinWeight will be the AIVar final update weight.
+        float MeanWeight = AKGUtil.GetMeanWeightFromWeightedFloatArray(KickForceScaleAList); // MeanWeight will be the AIVar final update weight.
 
-        float ScaleAMin = AKGUtil.GetMeanFromWeightedFloatArray(KickForceScaleAList);
-        float ScaleAStdDev = AKGUtil.GetStdDevFromWeightedFloatArray(KickForceScaleAList, ScaleAMin);
+        float ScaleAMean = AKGUtil.GetMeanFromWeightedFloatArray(KickForceScaleAList);
+        float ScaleAStdDev = AKGUtil.GetStdDevFromWeightedFloatArray(KickForceScaleAList, ScaleAMean);
 
-        float ScaleBMin = AKGUtil.GetMeanFromWeightedFloatArray(KickForceScaleBList);
-        float ScaleBStdDev = AKGUtil.GetStdDevFromWeightedFloatArray(KickForceScaleBList, ScaleBMin);
+        float ScaleBMean = AKGUtil.GetMeanFromWeightedFloatArray(KickForceScaleBList);
+        float ScaleBStdDev = AKGUtil.GetStdDevFromWeightedFloatArray(KickForceScaleBList, ScaleBMean);
 
-        float DirDevMin = AKGUtil.GetMeanFromWeightedFloatArray(KickDirDeviationList);
-        //float DirDevStdDev = AKGUtil.GetStdDevFromWeightedFloatArray(KickDirDeviationList, DirDevMin);
+        float DirDevMean = AKGUtil.GetMeanFromWeightedFloatArray(KickDirDeviationList);
+        //float DirDevStdDev = AKGUtil.GetStdDevFromWeightedFloatArray(KickDirDeviationList, DirDevMean);
 
-        // @TODO We might apply some weight on update AIVarSet.
-        AIVarSetMain.UpdateKickForceScaleA(ScaleAMin, ScaleAStdDev, MinWeight);
-        AIVarSetMain.UpdateKickForceScaleB(ScaleBMin, ScaleBStdDev, MinWeight);
-        AIVarSetMain.UpdateKickDirDeviation(DirDevMin, MinWeight); // Min value is the deviation here.
+        AIVarSetMain.UpdateKickForceScaleA(ScaleAMean, ScaleAStdDev, MeanWeight);
+        AIVarSetMain.UpdateKickForceScaleB(ScaleBMean, ScaleBStdDev, MeanWeight);
+        AIVarSetMain.UpdateKickDirDeviation(DirDevMean, MeanWeight); // Mean value is the deviation here.
 
-        SuccessfulTrials.clear(); // Then remove the history.
+        SingleKickSuccessfulTrials.clear(); // Then remove the history.
+    }
+
+    private void ApplyTimedSuccessfulSamplesToAIVar(){
+        // Probably just the same..
+
+        ArrayList<WeightedFloat> TargetSelectScaleAList = new ArrayList<WeightedFloat>();
+        ArrayList<WeightedFloat> TargetSelectScaleBList = new ArrayList<WeightedFloat>();
+        ArrayList<WeightedFloat> TargetSelectScaleCList = new ArrayList<WeightedFloat>();
+        ArrayList<WeightedFloat> TargetSelectScaleExtraList = new ArrayList<WeightedFloat>();
+        for(int SI = 0; SI < TimedSuccessfulTrials.size(); ++SI){
+            AKGAITrialRecordInfo ThisInfo = TimedSuccessfulTrials.get(SI);
+            TargetSelectScaleAList.add(new WeightedFloat(ThisInfo.mWeightForTargetSelVars, ThisInfo.mTargetSelectScaleA));
+            TargetSelectScaleBList.add(new WeightedFloat(ThisInfo.mWeightForTargetSelVars, ThisInfo.mTargetSelectScaleB));
+            TargetSelectScaleCList.add(new WeightedFloat(ThisInfo.mWeightForTargetSelVars, ThisInfo.mTargetSelectScaleC));
+            TargetSelectScaleExtraList.add(new WeightedFloat(ThisInfo.mWeightForTargetSelVars, ThisInfo.mTargetSelectScaleExtra));
+        }
+
+        float MeanWeight = AKGUtil.GetMeanWeightFromWeightedFloatArray(TargetSelectScaleAList); // MeanWeight will be the AIVar final update weight.
+
+        float ScaleAMean = AKGUtil.GetMeanFromWeightedFloatArray(TargetSelectScaleAList);
+        float ScaleAStdDev = AKGUtil.GetStdDevFromWeightedFloatArray(TargetSelectScaleAList, ScaleAMean);
+
+        float ScaleBMean = AKGUtil.GetMeanFromWeightedFloatArray(TargetSelectScaleBList);
+        float ScaleBStdDev = AKGUtil.GetStdDevFromWeightedFloatArray(TargetSelectScaleBList, ScaleBMean);
+
+        float ScaleCMean = AKGUtil.GetMeanFromWeightedFloatArray(TargetSelectScaleCList);
+        float ScaleCStdDev = AKGUtil.GetStdDevFromWeightedFloatArray(TargetSelectScaleCList, ScaleCMean);
+
+        float ScaleExtraMean = AKGUtil.GetMeanFromWeightedFloatArray(TargetSelectScaleExtraList);
+        float ScaleExtraStdDev = AKGUtil.GetStdDevFromWeightedFloatArray(TargetSelectScaleExtraList, ScaleExtraMean);
+
+        AIVarSetMain.UpdateTargetSelectScaleA(ScaleAMean, ScaleAStdDev, MeanWeight);
+        AIVarSetMain.UpdateTargetSelectScaleB(ScaleBMean, ScaleBStdDev, MeanWeight);
+        AIVarSetMain.UpdateTargetSelectScaleC(ScaleCMean, ScaleCStdDev, MeanWeight);
+        AIVarSetMain.UpdateTargetSelectScaleExtra(ScaleExtraMean, ScaleExtraStdDev, MeanWeight);
+
+        TimedSuccessfulTrials.clear();
     }
 }

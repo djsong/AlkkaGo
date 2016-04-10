@@ -28,6 +28,7 @@ public class SingleAlkkagiTurn {
     private float mbThisTurnSuccessRate = 0.0f;
     public float GetThisTurnSuccessRate() {return mbThisTurnSuccessRate;}
 
+    // See also AlkkagiAI.TimedRecordWeight**
     public static final float TurnResultRate_CleanSuccess = 1.0f;
     public static final float TurnResultRate_BothDead = 0.6f;
     public static final float TurnResultRate_BothAlive = 0.1f;

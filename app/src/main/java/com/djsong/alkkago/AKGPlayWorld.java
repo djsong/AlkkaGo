@@ -1,7 +1,6 @@
 package com.djsong.alkkago;
 
 import android.app.AlertDialog;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -10,7 +9,6 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.widget.Toast;
-
 import java.util.ArrayList;
 
 /**
@@ -137,17 +135,14 @@ public class AKGPlayWorld {
         if(mCurrentMatch != null) { // mCurrentMatch must be valid yet
             if(mCurrentMatch.GetBlackStonePlayerType() != mCurrentMatch.GetWhiteStonePlayerType()) {
                 // Human - AI match
-
                 if (mCurrentMatch.IsTied()) {
                     // Some handling for tie?
                     mbJustTied = true;
                 } else if ((mCurrentMatch.GetBlackStonePlayerType() == SingleAlkkagiMatch.ALKKAGI_PLAYER_HUMAN && mCurrentMatch.IsBlackWon())
                         || (mCurrentMatch.GetWhiteStonePlayerType() == SingleAlkkagiMatch.ALKKAGI_PLAYER_HUMAN && mCurrentMatch.IsWhiteWon())){
-                    // Human win
-                    mbHumanJustWon = true;
+                    mbHumanJustWon = true;  // Human win
                 }else {
-                    // AI win
-                    mbAIJustWon = true;
+                    mbAIJustWon = true; // AI win
                 }
 
                 // Cache the time to show up some dialog..
@@ -183,7 +178,7 @@ public class AKGPlayWorld {
         return dialog;
     }
 
-    /** Initialize stone positions for play */
+    /** Initialize stone positions for play. One of match start routine. */
     public synchronized void SetStonesAtStartingPosition(float RandomPlaceDeviation)
     {
         for(int SI = 0; SI < mBlackStones.size(); ++SI)
@@ -216,6 +211,24 @@ public class AKGPlayWorld {
         }
     }
 
+    public int GetAliveBlackStoneNum(){
+        int RetVal = 0;
+        for(AKGStone CurrStone : mBlackStones){
+            if(CurrStone.IsAlive()){
+                ++RetVal;
+            }
+        }
+        return RetVal;
+    }
+    public int GetAliveWhiteStoneNum(){
+        int RetVal = 0;
+        for(AKGStone CurrStone : mWhiteStones){
+            if(CurrStone.IsAlive()){
+                ++RetVal;
+            }
+        }
+        return RetVal;
+    }
 
     public AKGVector2D ScreenToWorldCoord(AKGVector2D InScreenCoord){
         AKGVector2D RetV = new AKGVector2D((InScreenCoord.X - mPlayView.GetPresentCoordX()) / (WorldRenderingScale * mPlayView.GetPresentScaleX()),
@@ -328,7 +341,6 @@ public class AKGPlayWorld {
                 InDrawCanvas.drawBitmap(DrawResultImage, SrcRect, DestRect, InDrawPaint);
         }
 
-
         if(mbAITrainingMode){ // Drawing some info.
 
             InDrawPaint.setARGB(255, 0, 0, 0);
@@ -346,7 +358,6 @@ public class AKGPlayWorld {
                     mAlkkagiBoard.RenderCoordY() + mAlkkagiBoard.RenderHeight() * 0.6f, InDrawPaint);
         }
     }
-
 
 
     //////////////////////////////////////////////////////////////////////
@@ -485,7 +496,6 @@ public class AKGPlayWorld {
                     }
                 }
 
-
                 if(!mbAITrainingMode) {
                     // Frame rate controlling.. No use for training mode
 
@@ -520,12 +530,11 @@ public class AKGPlayWorld {
     //////////////////////////////////////////////////////////////////////
     // AI update loop and other stuff.
 
-
     public void StartAITraining(){
 
         mbAITrainingMode = true;
         mAITrainingStartedTime = System.currentTimeMillis();
-        mAlkkagiAI.StartDeepShittingTrainig(); // Also set the AI object.
+        mAlkkagiAI.StartDeepShittingTraining(); // Also set the AI object.
 
         StartSingleMatch(SingleAlkkagiMatch.ALKKAGI_PLAYER_AI, SingleAlkkagiMatch.ALKKAGI_PLAYER_AI, true);
     }
@@ -538,7 +547,7 @@ public class AKGPlayWorld {
     }
     public void EndAITraining(){
         mbAITrainingMode = false;
-        mAlkkagiAI.EndDeepShittingTrainig();
+        mAlkkagiAI.EndDeepShittingTraining();
     }
 
     void AIThreadMain(float DeltaSeconds) {
@@ -644,6 +653,5 @@ public class AKGPlayWorld {
 
         }
     }
-
 
 }

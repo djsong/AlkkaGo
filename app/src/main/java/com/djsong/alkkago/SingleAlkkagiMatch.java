@@ -212,9 +212,6 @@ public class SingleAlkkagiMatch {
                         }
                     });
                 }
-
-
-                // @TODO Catch the match complete.. pop-up some dialog to give some selection..
             }
         }
     }
