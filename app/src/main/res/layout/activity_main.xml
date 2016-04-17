@@ -69,4 +69,14 @@
         android:id="@+id/AI_training_3_min"
         android:textSize="18dp"
         android:layout_marginTop="5dp"/>
+
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="종료 (Quit)"
+        android:id="@+id/QuitApp"
+        android:background="@color/button_material_dark"
+        android:textColor="@color/switch_thumb_normal_material_light"
+        android:textSize="18dp"
+        android:layout_marginTop="5dp"/>
 </LinearLayout>

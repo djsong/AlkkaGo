@@ -15,6 +15,7 @@ public class MainActivity extends ActionBarActivity {
     Button mAITrainingBn_30Sec;
     Button mAITrainingBn_1Min;
     Button mAITrainingBn_3Min;
+    Button mQuitBn;
 
     public static final String INTENT_KEY_TrainingTimeSec = "AITrainingTimeSec";
 
@@ -29,6 +30,7 @@ public class MainActivity extends ActionBarActivity {
         mAITrainingBn_30Sec = (Button)findViewById(R.id.AI_training_30_sec);
         mAITrainingBn_1Min = (Button)findViewById(R.id.AI_training_1_min);
         mAITrainingBn_3Min = (Button)findViewById(R.id.AI_training_3_min);
+        mQuitBn = (Button)findViewById(R.id.QuitApp);
 
         mAITrainingBn_No.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -58,6 +60,12 @@ public class MainActivity extends ActionBarActivity {
             @Override
             public void onClick(View v) {
                 AITrainingBnCBCommon(v, 180.0f);
+            }
+        });
+        mQuitBn.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View v){
+                finish();
             }
         });
     }
