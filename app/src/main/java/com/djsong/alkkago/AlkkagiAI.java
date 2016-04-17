@@ -26,6 +26,11 @@ class NDAIVar{
         mStdDev = InStdDev;
         mbPositiveDistributeOnly = bInPositiveDistributeOnly;
     }
+    /** To modify mean and standard deviation. */
+    public void UpdateProperties(float InNewMean, float InNewStdDev){
+        mMeanValue = InNewMean;
+        mStdDev = InNewStdDev;
+    }
 
     /**
      * You use this to get a final value in most common circumstance.
@@ -55,10 +60,7 @@ class AKGAIVarSet{
     }
     /** Update KickForceScaleA with new value's weight (0 ~ 1) to existing value */
     public void UpdateKickForceScaleA(float NewMean, float NewStdDev, float NewValueWeight){
-        NewValueWeight = Math.min(1.0f, Math.max(0.0f, NewValueWeight));
-        float FinalMean = mKickForceScaleA.MeanValue() * (1.0f - NewValueWeight) + NewMean * NewValueWeight;
-        float FinalStdDev = mKickForceScaleA.StdDev() * (1.0f - NewValueWeight) + NewStdDev * NewValueWeight;
-        mKickForceScaleA = new NDAIVar(FinalMean, FinalStdDev, mKickForceScaleA.IsOnlyPositiveDistribution());
+        UpdateSingleAIVarCommon(mKickForceScaleA, NewMean, NewStdDev, NewValueWeight);
     }
 
     //////////////////////////////////////////////////
@@ -73,17 +75,12 @@ class AKGAIVarSet{
     }
     /** Update KickForceScaleB with new value's weight (0 ~ 1) to existing value */
     public void UpdateKickForceScaleB(float NewMean, float NewStdDev, float NewValueWeight){
-        NewValueWeight = Math.min(1.0f, Math.max(0.0f, NewValueWeight));
-        float FinalMean = mKickForceScaleB.MeanValue() * (1.0f - NewValueWeight) + NewMean * NewValueWeight;
-        float FinalStdDev = mKickForceScaleB.StdDev() * (1.0f - NewValueWeight) + NewStdDev * NewValueWeight;
-        mKickForceScaleB = new NDAIVar(FinalMean, FinalStdDev, mKickForceScaleB.IsOnlyPositiveDistribution());
+        UpdateSingleAIVarCommon(mKickForceScaleB, NewMean, NewStdDev, NewValueWeight);
     }
 
     //
     // @TODO It would be interesting to add some scale to remaining stone count of both sides.
     // Still it is just simple kicking AI, not like playing game in overall.
-    //
-    // @TODO Also think about simplify repeated code blocks.
     //
 
     //////////////////////////////////////////////////
@@ -103,7 +100,7 @@ class AKGAIVarSet{
     /** Update KickDirDeviation with new value's weight (0 ~ 1) to existing value */
     public void UpdateKickDirDeviation(float NewStdDev, float NewValueWeight){
         NewValueWeight = Math.min(1.0f, Math.max(0.0f, NewValueWeight));
-        // Only requires standard deviation.
+        // Only requires standard deviation. Not using UpdateSingleAIVarCommon here.
         float FinalStdDev = mKickDirDeviation.StdDev() * (1.0f - NewValueWeight) + NewStdDev * NewValueWeight;
         mKickDirDeviation = new NDAIVar(0.0f, FinalStdDev, mKickDirDeviation.IsOnlyPositiveDistribution());
     }
@@ -119,10 +116,7 @@ class AKGAIVarSet{
         return ThisSample;
     }
     public void UpdateTargetSelectScaleA(float NewMean, float NewStdDev, float NewValueWeight){
-        NewValueWeight = Math.min(1.0f, Math.max(0.0f, NewValueWeight));
-        float FinalMean = mTargetSelectScaleA.MeanValue() * (1.0f - NewValueWeight) + NewMean * NewValueWeight;
-        float FinalStdDev = mTargetSelectScaleA.StdDev() * (1.0f - NewValueWeight) + NewStdDev * NewValueWeight;
-        mTargetSelectScaleA = new NDAIVar(FinalMean, FinalStdDev, mTargetSelectScaleA.IsOnlyPositiveDistribution());
+        UpdateSingleAIVarCommon(mTargetSelectScaleA, NewMean, NewStdDev, NewValueWeight);
     }
 
     //////////////////////////////////////////////////
@@ -136,10 +130,7 @@ class AKGAIVarSet{
         return ThisSample;
     }
     public void UpdateTargetSelectScaleB(float NewMean, float NewStdDev, float NewValueWeight){
-        NewValueWeight = Math.min(1.0f, Math.max(0.0f, NewValueWeight));
-        float FinalMean = mTargetSelectScaleB.MeanValue() * (1.0f - NewValueWeight) + NewMean * NewValueWeight;
-        float FinalStdDev = mTargetSelectScaleB.StdDev() * (1.0f - NewValueWeight) + NewStdDev * NewValueWeight;
-        mTargetSelectScaleB = new NDAIVar(FinalMean, FinalStdDev, mTargetSelectScaleB.IsOnlyPositiveDistribution());
+        UpdateSingleAIVarCommon(mTargetSelectScaleB, NewMean, NewStdDev, NewValueWeight);
     }
 
     //////////////////////////////////////////////////
@@ -154,10 +145,7 @@ class AKGAIVarSet{
         return ThisSample;
     }
     public void UpdateTargetSelectScaleC(float NewMean, float NewStdDev, float NewValueWeight){
-        NewValueWeight = Math.min(1.0f, Math.max(0.0f, NewValueWeight));
-        float FinalMean = mTargetSelectScaleC.MeanValue() * (1.0f - NewValueWeight) + NewMean * NewValueWeight;
-        float FinalStdDev = mTargetSelectScaleC.StdDev() * (1.0f - NewValueWeight) + NewStdDev * NewValueWeight;
-        mTargetSelectScaleC = new NDAIVar(FinalMean, FinalStdDev, mTargetSelectScaleC.IsOnlyPositiveDistribution());
+        UpdateSingleAIVarCommon(mTargetSelectScaleC, NewMean, NewStdDev, NewValueWeight);
     }
 
     //////////////////////////////////////////////////
@@ -171,12 +159,16 @@ class AKGAIVarSet{
         return ThisSample;
     }
     public void UpdateTargetSelectScaleExtra(float NewMean, float NewStdDev, float NewValueWeight){
-        NewValueWeight = Math.min(1.0f, Math.max(0.0f, NewValueWeight));
-        float FinalMean = mTargetSelectScaleExtra.MeanValue() * (1.0f - NewValueWeight) + NewMean * NewValueWeight;
-        float FinalStdDev = mTargetSelectScaleExtra.StdDev() * (1.0f - NewValueWeight) + NewStdDev * NewValueWeight;
-        mTargetSelectScaleExtra = new NDAIVar(FinalMean, FinalStdDev, mTargetSelectScaleExtra.IsOnlyPositiveDistribution());
+        UpdateSingleAIVarCommon(mTargetSelectScaleExtra, NewMean, NewStdDev, NewValueWeight);
     }
 
+    //////////////////////////////////////////////////
+    private void UpdateSingleAIVarCommon(NDAIVar InVarToUpdate, float NewMean, float NewStdDev, float NewValueWeight){
+        NewValueWeight = Math.min(1.0f, Math.max(0.0f, NewValueWeight));
+        float FinalMean = InVarToUpdate.MeanValue() * (1.0f - NewValueWeight) + NewMean * NewValueWeight;
+        float FinalStdDev = InVarToUpdate.StdDev() * (1.0f - NewValueWeight) + NewStdDev * NewValueWeight;
+        InVarToUpdate.UpdateProperties(FinalMean, FinalStdDev);
+    }
 }
 
 /**
