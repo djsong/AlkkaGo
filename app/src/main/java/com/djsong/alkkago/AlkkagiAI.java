@@ -107,7 +107,7 @@ class AKGAIVarSet{
 
     //////////////////////////////////////////////////
     /** To be applied to the inverse of distance from kick stone candidate and target candidate */
-    private NDAIVar mTargetSelectScaleA = new NDAIVar(1.0f, 5.0f, false); // Better be positive. Initial value is dumb.
+    private NDAIVar mTargetSelectScaleA = new NDAIVar(2.0f, 4.0f, false); // Better be positive. Initial value is dumb.
     public float GetSampleTargetSelectScaleA(AKGAITrialRecordInfo OptionalRecordInfo){
         float ThisSample = mTargetSelectScaleA.GetSampleValue();
         if(OptionalRecordInfo != null){
@@ -121,7 +121,7 @@ class AKGAIVarSet{
 
     //////////////////////////////////////////////////
     /** To be applied to the inverse of distance from target candidate and board edge */
-    private NDAIVar mTargetSelectScaleB = new NDAIVar(1.0f, 5.0f, false); // Better be positive. Initial value is dumb.
+    private NDAIVar mTargetSelectScaleB = new NDAIVar(2.0f, 4.0f, false); // Better be positive. Initial value is dumb.
     public float GetSampleTargetSelectScaleB(AKGAITrialRecordInfo OptionalRecordInfo){
         float ThisSample = mTargetSelectScaleB.GetSampleValue();
         if(OptionalRecordInfo != null){
@@ -136,7 +136,7 @@ class AKGAIVarSet{
     //////////////////////////////////////////////////
     /** To be applied to the inverse of distance between two and additionally from kicking candidate to board edge
      * It is about getting out from my dangerous state. */
-    private NDAIVar mTargetSelectScaleC = new NDAIVar(1.0f, 5.0f, false); // Better be positive. Initial value is dumb.
+    private NDAIVar mTargetSelectScaleC = new NDAIVar(2.0f, 4.0f, false); // Better be positive. Initial value is dumb.
     public float GetSampleTargetSelectScaleC(AKGAITrialRecordInfo OptionalRecordInfo){
         float ThisSample = mTargetSelectScaleC.GetSampleValue();
         if(OptionalRecordInfo != null){
@@ -254,7 +254,7 @@ public class AlkkagiAI {
         // Create new one for this turn's AI var recording. Almost for mbDeepShittingMode but just do this for all time.
         CachedTrialRecord_1 = new AKGAITrialRecordInfo();
 
-        // Before do the main stuff.. record some current state..
+        // Before do the main stuff.. record some current state.. to compare the result later.
         CachedTrialRecord_1.mLiveMyStoneNum = 0;
         for(AKGStone CurrMy : ControllingStones){
             if(CurrMy.IsAlive()){
@@ -447,14 +447,14 @@ public class AlkkagiAI {
 
             // How many other stones are in the same direction to the target candidate?
             // In this case, the stones in the same line can be considered as a good chance to get multiple in a single kick or can be either considered as obstacle.
-            int OtherStonesNumInSameLine = 0;
+            int MoreOtherStonesNumInSameLine = 0;
             for (int OSI = 0; OSI < OtherStones.size(); ++OSI) {
                 if(OSI == SI){
                     continue; // Skip for the same one.
                 }
                 AKGStone OtherStoneCheck = OtherStones.get(OSI);
                 if(AKGUtil.RayCircleIntersect(RayCheckOrigin, RayCheckDir, OtherStoneCheck.WorldCoord(), OtherStoneCheck.Radius())){
-                    ++OtherStonesNumInSameLine;
+                    ++MoreOtherStonesNumInSameLine;
                 }
             }
 
@@ -463,7 +463,7 @@ public class AlkkagiAI {
                 KickTargetPickInfo NewVisibleInfo = new KickTargetPickInfo();
                 NewVisibleInfo.KickStone = KickStone;
                 NewVisibleInfo.TargetStone = TargetCandidate;
-                NewVisibleInfo.AdditionalTargetNumInSameLine = OtherStonesNumInSameLine; // It will do some for choosing the final target among visible list.
+                NewVisibleInfo.AdditionalTargetNumInSameLine = MoreOtherStonesNumInSameLine; // It will do some for choosing the final target among visible list.
                 VisibleList.add(NewVisibleInfo);
             }
         }
@@ -561,7 +561,7 @@ public class AlkkagiAI {
             int OtherStoneNumDelta = 0; // How many of other stones are dead from two turns before.
             AKGAITrialRecordInfo PrevRecordToCheck = null;
             // Then, record for target selection and two turn history.
-            if(JustEndedTurn.IsBlackTurn() && CachedTrialRecord_2_B != null) {
+            /*if(JustEndedTurn.IsBlackTurn() && CachedTrialRecord_2_B != null) {
                 PrevRecordToCheck = CachedTrialRecord_2_B;
                 // Check how many stones are dead for each side.
                 MyStoneNumDelta = CurrentLiveBlackStoneNum - PrevRecordToCheck.mLiveMyStoneNum;
@@ -571,7 +571,21 @@ public class AlkkagiAI {
                 // Check how many stones are dead for each side.
                 OtherStoneNumDelta = CurrentLiveBlackStoneNum - PrevRecordToCheck.mLiveOtherStoneNum;
                 MyStoneNumDelta = CurrentLiveWhiteStoneNum - PrevRecordToCheck.mLiveMyStoneNum;
+            }*/
+
+            // Here, we use just ended turn's record, instead of CachedTrialRecord_2* (record of two turns before). Looks like it works better.. but not sure..
+            if(JustEndedTurn.IsBlackTurn() && CachedTrialRecord_1 != null) {
+                PrevRecordToCheck = CachedTrialRecord_1;
+                // Check how many stones are dead for each side.
+                MyStoneNumDelta = CurrentLiveBlackStoneNum - PrevRecordToCheck.mLiveMyStoneNum;
+                OtherStoneNumDelta = CurrentLiveWhiteStoneNum - PrevRecordToCheck.mLiveOtherStoneNum;
+            } else if(!JustEndedTurn.IsBlackTurn() && CachedTrialRecord_1 != null){
+                PrevRecordToCheck = CachedTrialRecord_1;
+                // Check how many stones are dead for each side.
+                OtherStoneNumDelta = CurrentLiveBlackStoneNum - PrevRecordToCheck.mLiveOtherStoneNum;
+                MyStoneNumDelta = CurrentLiveWhiteStoneNum - PrevRecordToCheck.mLiveMyStoneNum;
             }
+
             // Definitely, it is better to kill other stones more than my stones.
             if(PrevRecordToCheck != null && MyStoneNumDelta > OtherStoneNumDelta){ // Let's not count for equal case..
                 PrevRecordToCheck.mWeightForTargetSelVars = //(MyStoneNumDelta == OtherStoneNumDelta) ? TimedRecordWeight_EqualResult :
