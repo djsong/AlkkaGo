@@ -25,6 +25,19 @@ public class AKGPlayView  extends SurfaceView implements SurfaceHolder.Callback 
     Context mCachedContext = null; // Is this necessary?
 
     //////////////////////////////////////////////////////////////////////
+    // Variables for charging kick type control
+
+    private boolean mbIsChargingForKicking = false;
+
+    /** Must be some valid reference if mbIsChargingForKicking is true */
+    private AKGStone mCurrentChargingKickTarget = null;
+    /** About how much charged? */
+    private AKGVector2D mCurrentChargingKickVector = new AKGVector2D(0.0f, 0.0f);
+    /** Bigger will make stone picking easier without correct stone picking, but too big value would not be fine either. */
+    private final float mChargingKickTargetPickSlack = 2.5f;
+    private final float mChargingKickForceScale = 12.0f;
+
+    //////////////////////////////////////////////////////////////////////
     // Some variables and objects for drawing..
 
     // Internal buffer bitmap for the internal buffer canvas
@@ -133,6 +146,20 @@ public class AKGPlayView  extends SurfaceView implements SurfaceHolder.Callback 
         {
             mInternalBufferCanvas.drawColor(Color.WHITE); // Clearing
             mPlayWorld.RenderThread_Draw(mInternalBufferCanvas, mPaintObject);
+
+            // ChargingKick mode visualization
+            if(mbIsChargingForKicking && mCurrentChargingKickTarget != null)
+            {
+                mPaintObject.setARGB(255, 255, 0, 0);
+                mPaintObject.setStrokeWidth(2.0f);
+                AKGVector2D ChargingLineStartWorld = mCurrentChargingKickTarget.WorldCoord();
+                AKGVector2D ChargingLineEndWorld = new AKGVector2D(ChargingLineStartWorld.X - mCurrentChargingKickVector.X, ChargingLineStartWorld.Y - mCurrentChargingKickVector.Y);
+                AKGVector2D ChargingLineStart = mPlayWorld.WorldToRenderCoord(ChargingLineStartWorld);
+                AKGVector2D ChargingLineEnd = mPlayWorld.WorldToRenderCoord(ChargingLineEndWorld);
+                mInternalBufferCanvas.drawLine(ChargingLineStart.X, ChargingLineStart.Y, ChargingLineEnd.X, ChargingLineEnd.Y, mPaintObject);
+
+                // Target stone will do some self outline visualization stuff too.
+            }
         }
     }
 
@@ -192,17 +219,26 @@ public class AKGPlayView  extends SurfaceView implements SurfaceHolder.Callback 
         float X = event.getX();
         float Y = event.getY();
 
-        UpdateTimedTouchList(X, Y);
+        if(mbIsChargingForKicking){
+            UpdateChargingKickState(X, Y);
+        }
+        else{
+            UpdateTimedTouchList(X, Y);
+        }
 
         switch (action) {
             case MotionEvent.ACTION_UP:
-
+                if(mbIsChargingForKicking) {
+                    EndChargingKick();
+                }
                 break;
             case MotionEvent.ACTION_DOWN:
-
+                TryBeginChargingKickMode(X, Y); // mbIsChargingForKicking will be set depend on the result here.
                 break;
             case MotionEvent.ACTION_MOVE:
-                TryKickAStoneByTouchList();
+                if(!mbIsChargingForKicking) {
+                    TryKickAStoneByTouchList();
+                }
                 break;
         }
 
@@ -250,6 +286,47 @@ public class AKGPlayView  extends SurfaceView implements SurfaceHolder.Callback 
         mPlayWorld.TryKickAStoneByTouchInfo(MostRecentTouch.TouchPoint, KickDirVector, MoveLength, MoveTimeSec, mStoneKickForceScale, mStoneKickSlack);
     }
 
+    //////////////////////////////////////////////////////////////////////
+    // For another stone kicking interface. Charged kick.
+
+    boolean TryBeginChargingKickMode(float TouchX, float TouchY)
+    {
+        AKGVector2D TouchVector = new AKGVector2D(TouchX, TouchY);
+        mCurrentChargingKickTarget = mPlayWorld.PickHumanControlledStoneAtTouchPoint(TouchVector, mChargingKickTargetPickSlack);
+        if(mCurrentChargingKickTarget != null){
+            mCurrentChargingKickTarget.SetSelectForChargingKickTarget(true);
+            mbIsChargingForKicking = true;
+            mTimedTouchList.clear();
+        }
+        else{
+            mbIsChargingForKicking = false;
+        }
+        return mbIsChargingForKicking;
+    }
+    void UpdateChargingKickState(float TouchX, float TouchY)
+    {
+        if(mbIsChargingForKicking == false || mCurrentChargingKickTarget == null){
+            return;
+        }
+
+        AKGVector2D TouchVector = new AKGVector2D(TouchX, TouchY);
+        AKGVector2D TouchWorldCoord = mPlayWorld.ScreenToWorldCoord(TouchVector);
+
+        mCurrentChargingKickVector.X = mCurrentChargingKickTarget.WorldCoordX() - TouchWorldCoord.X;
+        mCurrentChargingKickVector.Y = mCurrentChargingKickTarget.WorldCoordY() - TouchWorldCoord.Y;
+    }
+    void EndChargingKick()
+    {
+        if(mbIsChargingForKicking == true && mCurrentChargingKickTarget != null)
+        {
+            mPlayWorld.TryKickAStoneByChargingInfo(mCurrentChargingKickTarget, mCurrentChargingKickVector, mChargingKickForceScale);
+        }
+        if(mCurrentChargingKickTarget != null){
+            mCurrentChargingKickTarget.SetSelectForChargingKickTarget(false);
+        }
+        mbIsChargingForKicking = false;
+        mCurrentChargingKickTarget = null;
+    }
 
     //////////////////////////////////////////////////////////////////////
     // ImageRenderingThread.. for real time rendering

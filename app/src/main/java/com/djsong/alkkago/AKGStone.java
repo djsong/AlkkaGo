@@ -28,6 +28,10 @@ public class AKGStone extends AKGActor {
     public void SetIsAlive(boolean bIn) { mbIsAlive = bIn; }
     public boolean IsAlive() { return mbIsAlive; }
 
+    /** For visualization of ChargingKick stuff of AKGPlayView */
+    private boolean mbIsCurrentChargingKickTarget = false;
+    public void SetSelectForChargingKickTarget(boolean bIn) {mbIsCurrentChargingKickTarget = bIn;}
+
     public AKGStone(boolean InBlack, float InRadius)
     {
         super();
@@ -173,6 +177,19 @@ public class AKGStone extends AKGActor {
     }
 
     public void RenderThread_DrawImpl(Canvas InDrawCanvas, Paint InDrawPaint) {
+
+        if(mbIsCurrentChargingKickTarget) // Draw some big glowing marker for charging kick selection
+        {
+            InDrawPaint.setARGB(127, 0,255,255);
+            float RadiusScaleChargingKickTarget = 4.0f;
+            float RadiusChargingKickTarget = mRenderRadius * RadiusScaleChargingKickTarget;
+            float RenderCoordXChargingKickTarget = mRenderCoordX + mRenderRadius - RadiusChargingKickTarget;
+            float RenderCoordYChargingKickTarget = mRenderCoordY + mRenderRadius - RadiusChargingKickTarget;
+
+            InDrawCanvas.drawCircle(RenderCoordXChargingKickTarget + RadiusChargingKickTarget, RenderCoordYChargingKickTarget + RadiusChargingKickTarget,
+                    RadiusChargingKickTarget, InDrawPaint);
+        }
+
         InDrawPaint.setStrokeWidth(1);
         if(mbIsBlackStone) {
             InDrawPaint.setARGB(255, 0,0,0);

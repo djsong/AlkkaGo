@@ -230,6 +230,7 @@ public class AKGPlayWorld {
         return RetVal;
     }
 
+    // Transform between touch screen space and world space
     public AKGVector2D ScreenToWorldCoord(AKGVector2D InScreenCoord){
         AKGVector2D RetV = new AKGVector2D((InScreenCoord.X - mPlayView.GetPresentCoordX()) / (WorldRenderingScale * mPlayView.GetPresentScaleX()),
                 (InScreenCoord.Y - mPlayView.GetPresentCoordY()) / (WorldRenderingScale * mPlayView.GetPresentScaleY()));
@@ -239,6 +240,21 @@ public class AKGPlayWorld {
         AKGVector2D RetV = new AKGVector2D(InWorldCoord.X * WorldRenderingScale * mPlayView.GetPresentScaleX() + mPlayView.GetPresentCoordX(),
                 InWorldCoord.Y * WorldRenderingScale * mPlayView.GetPresentScaleY() + mPlayView.GetPresentCoordY());
         return RetV;
+    }
+    // Transform between render buffer space and world space
+    public AKGVector2D RenderToWorldCoord(AKGVector2D InScreenCoord){
+        AKGVector2D RetV = new AKGVector2D(InScreenCoord.X / WorldRenderingScale, InScreenCoord.Y / WorldRenderingScale);
+        return RetV;
+    }
+    public AKGVector2D WorldToRenderCoord(AKGVector2D InWorldCoord){
+        AKGVector2D RetV = new AKGVector2D(InWorldCoord.X * WorldRenderingScale, InWorldCoord.Y * WorldRenderingScale);
+        return RetV;
+    }
+
+    ArrayList<AKGStone> GetHumanControlledStoneList() // Get human controlled stone, if it is a valid chance for human player.
+    {
+        return (mCurrentMatch != null && mCurrentMatch.IsMatchStarted() && mCurrentMatch.IsWaitingForKickingThisTurn()) ?
+                mCurrentMatch.GetHumanStonesIfCurrentHumanTurn() : null;
     }
 
     /** Called from View with some refined touch information. Check if it is worth to kick a stone.
@@ -250,9 +266,7 @@ public class AKGPlayWorld {
 
         AKGVector2D LastTouchPointWorld = ScreenToWorldCoord(LastTouchPoint); // LastTouchPoint is in screen coordinate.
 
-        // Get human controlled stone, if it is a valid chance for human player.
-        ArrayList<AKGStone> HumanStones = (mCurrentMatch != null && mCurrentMatch.IsMatchStarted() && mCurrentMatch.IsWaitingForKickingThisTurn()) ?
-                mCurrentMatch.GetHumanStonesIfCurrentHumanTurn() : null;
+        ArrayList<AKGStone> HumanStones = GetHumanControlledStoneList();
         if(HumanStones == null) { // Could be null if not current turn or if both are AI player.
             return;
         }
@@ -277,6 +291,63 @@ public class AKGPlayWorld {
 
         if(mCurrentMatch != null){
             mCurrentMatch.NotifyKickedAStone(HumanStones.get(OverlapStoneIndex), null); // Human kicking don't have target
+        }
+    }
+
+    /** Mainly for ChargingKick mode control, it is meant to pick a human controlled stone overlapping InPoint, with some slack. */
+    public AKGStone PickHumanControlledStoneAtTouchPoint(AKGVector2D InTouchPoint, float InPickSlack)
+    {
+        ArrayList<AKGStone> HumanStones = GetHumanControlledStoneList();
+        if(HumanStones == null) { // Could be null if not current turn or if both are AI player.
+            return null;
+        }
+
+        AKGVector2D WorldPickPoint = ScreenToWorldCoord(InTouchPoint);
+
+        AKGStone FoundSoFar = null;
+        float ClosestDistSoFar = 10000000000.0f; // With InPickSlack bigger than 1.0, we can have multiple overlap stones, so we will check distance too.
+        for(AKGStone CurrStone : HumanStones)
+        {
+            AKGVector2D DistVectorToCurrStone = new AKGVector2D(WorldPickPoint.X - CurrStone.WorldCoordX(), WorldPickPoint.Y - CurrStone.WorldCoordY());
+            float DistToCurrStone = DistVectorToCurrStone.GetLength();
+            if(CurrStone.IsAlive() && // Only for live stones
+                    CurrStone.IsPointOverlapWithSlack(WorldPickPoint.X, WorldPickPoint.Y, InPickSlack) && DistToCurrStone < ClosestDistSoFar)
+            {
+                FoundSoFar = CurrStone;
+                ClosestDistSoFar = DistToCurrStone;
+            }
+        }
+
+        return FoundSoFar;
+    }
+
+    /** Other than TryKickAStoneByTouchInfo, to kick a stone by charging kick control */
+    public void TryKickAStoneByChargingInfo(AKGStone TargetStone, AKGVector2D ChargingVector, float ChargingKickForceScale)
+    {
+        if(TargetStone == null || ChargingVector.GetLength() <= 0.0f || ChargingKickForceScale <= 0.0f){
+            return;
+        }
+        // We got TargetStone reference, but check again if TargetStone is really valid.
+        ArrayList<AKGStone> HumanStones = GetHumanControlledStoneList();
+        if(HumanStones == null) { // Could be null if not current turn or if both are AI player.
+            return;
+        }
+        boolean bFoundMatchingOne = false;
+        for(AKGStone CurrStone : HumanStones) {
+            if(CurrStone == TargetStone){
+                bFoundMatchingOne = true;
+                break;
+            }
+        }
+        if(!bFoundMatchingOne){
+            return; // If this is the case, somethings wrong..
+        }
+
+        // Final kicking.
+        TargetStone.AddImpulse(ChargingVector.X * ChargingKickForceScale, ChargingVector.Y * ChargingKickForceScale);
+
+        if(mCurrentMatch != null){
+            mCurrentMatch.NotifyKickedAStone(TargetStone, null); // Human kicking don't have target for hit
         }
     }
 
