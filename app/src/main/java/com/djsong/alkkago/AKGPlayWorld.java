@@ -251,7 +251,7 @@ public class AKGPlayWorld {
         return RetV;
     }
 
-    ArrayList<AKGStone> GetHumanControlledStoneList() // Get human controlled stone, if it is a valid chance for human player.
+    public ArrayList<AKGStone> GetHumanControlledStoneList() // Get human controlled stone, if it is a valid chance for human player.
     {
         return (mCurrentMatch != null && mCurrentMatch.IsMatchStarted() && mCurrentMatch.IsWaitingForKickingThisTurn()) ?
                 mCurrentMatch.GetHumanStonesIfCurrentHumanTurn() : null;

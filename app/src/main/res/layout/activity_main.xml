@@ -41,8 +41,8 @@
     <Button
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="15 초 (15 sec.)"
-        android:id="@+id/AI_training_15_sec"
+        android:text="10 초 (10 sec.)"
+        android:id="@+id/AI_training_10_sec"
         android:textSize="18dp"
         android:layout_marginTop="5dp"/>
 

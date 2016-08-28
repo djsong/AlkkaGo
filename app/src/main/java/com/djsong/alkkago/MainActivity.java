@@ -11,7 +11,7 @@ import android.widget.Button;
 public class MainActivity extends ActionBarActivity {
 
     Button mAITrainingBn_No;
-    Button mAITrainingBn_15Sec;
+    Button mAITrainingBn_10Sec;
     Button mAITrainingBn_30Sec;
     Button mAITrainingBn_1Min;
     Button mAITrainingBn_3Min;
@@ -26,7 +26,7 @@ public class MainActivity extends ActionBarActivity {
 
 
         mAITrainingBn_No = (Button)findViewById(R.id.AI_no_training);
-        mAITrainingBn_15Sec = (Button)findViewById(R.id.AI_training_15_sec);
+        mAITrainingBn_10Sec = (Button)findViewById(R.id.AI_training_10_sec);
         mAITrainingBn_30Sec = (Button)findViewById(R.id.AI_training_30_sec);
         mAITrainingBn_1Min = (Button)findViewById(R.id.AI_training_1_min);
         mAITrainingBn_3Min = (Button)findViewById(R.id.AI_training_3_min);
@@ -38,10 +38,10 @@ public class MainActivity extends ActionBarActivity {
                 AITrainingBnCBCommon(v, 0.0f);
             }
         });
-        mAITrainingBn_15Sec.setOnClickListener(new View.OnClickListener() {
+        mAITrainingBn_10Sec.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                AITrainingBnCBCommon(v, 15.0f);
+                AITrainingBnCBCommon(v, 10.0f);
             }
         });
         mAITrainingBn_30Sec.setOnClickListener(new View.OnClickListener() {

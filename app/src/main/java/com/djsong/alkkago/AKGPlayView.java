@@ -291,6 +291,8 @@ public class AKGPlayView  extends SurfaceView implements SurfaceHolder.Callback 
 
     boolean TryBeginChargingKickMode(float TouchX, float TouchY)
     {
+        ResetChargingKickState();
+
         AKGVector2D TouchVector = new AKGVector2D(TouchX, TouchY);
         mCurrentChargingKickTarget = mPlayWorld.PickHumanControlledStoneAtTouchPoint(TouchVector, mChargingKickTargetPickSlack);
         if(mCurrentChargingKickTarget != null){
@@ -321,8 +323,19 @@ public class AKGPlayView  extends SurfaceView implements SurfaceHolder.Callback 
         {
             mPlayWorld.TryKickAStoneByChargingInfo(mCurrentChargingKickTarget, mCurrentChargingKickVector, mChargingKickForceScale);
         }
+        ResetChargingKickState();
+    }
+    void ResetChargingKickState()
+    {
         if(mCurrentChargingKickTarget != null){
             mCurrentChargingKickTarget.SetSelectForChargingKickTarget(false);
+        }
+        // Unselect for other stones.. just for a case.
+        ArrayList<AKGStone> HumanControlledStones = mPlayWorld.GetHumanControlledStoneList();
+        if(HumanControlledStones != null) {
+            for (AKGStone ThisStone : HumanControlledStones) {
+                ThisStone.SetSelectForChargingKickTarget(false);
+            }
         }
         mbIsChargingForKicking = false;
         mCurrentChargingKickTarget = null;
